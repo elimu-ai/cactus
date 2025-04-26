@@ -90,11 +90,5 @@ build_framework "tvOS" "arm64;x86_64" "appletvsimulator" "tvos-arm64_x86_64-simu
 build_framework "tvOS" "arm64" "appletvos" "tvos-arm64" "build-tvos"
 rm -rf build-tvos
 
-# copy the cactus.xcframework to the swift/Frameworks directory
-cp -R ios/cactus.xcframework swift/Source/
-
-# copy the cactus.xcframework to flutter
-cp -R ios/cactus.xcframework flutter/
-
 t1=$(date +%s)
 echo "Total time: $((t1 - t0)) seconds"
