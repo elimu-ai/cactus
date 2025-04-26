@@ -1,5 +1,8 @@
 rm -rf swift/CactusSwift.xcframework
 
+# Copy cactus framework to swift/source
+cp -R ios/cactus.xcframework swift/Source/
+
 xcodebuild clean
 
 HEADER_PATHS="$(pwd)/swift/Source/cactus.xcframework/ios-arm64/cactus.framework/Headers $(pwd)/swift/Source/cactus.xcframework/ios-arm64_x86_64-simulator/cactus.framework/Headers"
