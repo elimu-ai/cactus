@@ -6,7 +6,7 @@ const modelName = 'SmolLM-135.gguf';
 const modelDirectory = Platform.OS === 'ios' ? `${FileSystem.documentDirectory}local-models/`: `${FileSystem.cacheDirectory}local-models/`;
 const fullModelPath = `${modelDirectory}${modelName}`;
 
-const modelUrl = 'https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B-Q8_0.gguf';
+const modelUrl = 'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q8_0.gguf';
 
 async function modelExists(): Promise<Boolean> {
     return (await FileSystem.getInfoAsync(fullModelPath)).exists;
