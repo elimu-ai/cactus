@@ -20,7 +20,4 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 5. Build the React‑Native JS package (TS ➜ JS, etc.)
 "$SCRIPT_DIR/build-react.sh"
 
-# 6. Build the Swift package
-"$SCRIPT_DIR/build-swift.sh"
-
  echo "All build steps completed successfully."
