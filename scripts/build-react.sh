@@ -13,12 +13,10 @@ cd "$ROOT_DIR/react"
 echo "Copying iOS frameworks and Android libraries to React Native project..."
 
 # Copy the iOS framework and project files
-cp -R "$ROOT_DIR/ios/cactus.xcframework" ios/ 
-cp -R "$ROOT_DIR/ios/CMakelists.txt" ios/ 
+cp -R "$ROOT_DIR/ios"/* ios/
 
-# Copy the contents of android/src/main into react/android/src/main
-# This copies all files without replacing the directory (there are important unique files)
-cp -R "$ROOT_DIR/android/src/main"/* android/src/main/
+# Copy only the jniLibs directory from android/src/main into react/android/src/main
+cp -R "$ROOT_DIR/android/src/main/jniLibs" "android/src/main/"
 
 echo "Building React Native package..." 
 yarn 

@@ -63,12 +63,14 @@ yarn.lock
 .expo/
 dist/
 build/
-coverage/
+coverage/*
 *.tsbuildinfo
 react/lib/
 react/ios/cactus.xcframework/
 react/ios/CMakelists.txt
-react/android/src/main/
+react/ios/CactusContext.h
+react/ios/CactusContext.mm
+react/android/src/main/jniLibs/
 
 
 # === Flutter/Dart ===

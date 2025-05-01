@@ -1,3 +1,0 @@
-# Cactus Kotlin
-
-In development
