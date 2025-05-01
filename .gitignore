@@ -67,6 +67,7 @@ coverage/*
 *.tsbuildinfo
 react/lib/
 react/ios/cactus.xcframework/
+react/ios/cactus.xcodeproj/
 react/ios/CMakelists.txt
 react/ios/CactusContext.h
 react/ios/CactusContext.mm
