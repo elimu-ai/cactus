@@ -90,7 +90,8 @@ app.*.symbols
 app.*.map.json
 pubspec.lock
 flutter/ios/cactus.xcframework
-flutter/ios/CMakelists.txt
+flutter/ios/classes/CactusContext.h
+flutter/ios/classes/CactusContext.mm
 flutter/android/src/main
 
 # === Metro/React Native cache ===
