@@ -82,4 +82,48 @@ dependencies {
 }
 
 // Optional: Add publishing configuration here later using the 'maven-publish' plugin
-// publishing { ... } 
+// publishing { ... }
+
+// Add this block at the end of android/build.gradle.kts
+
+// Add task to generate sources JAR (optional but recommended)
+tasks.register<Jar>("androidSourcesJar") {
+    archiveClassifier.set("sources")
+    from(android.sourceSets.getByName("main").java.srcDirs)
+    from(android.sourceSets.getByName("main").kotlin.srcDirs)
+}
+
+afterEvaluate { // Ensures android components are ready
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                // Define your library's coordinates
+                groupId = "com.example.cactus" 
+                artifactId = "cactus-android" 
+                version = "0.0.1" 
+
+                // Tell Maven to publish the AAR file built by the 'release' build type
+                from(components["release"]) 
+
+                // Include sources jar (optional)
+                artifact(tasks["androidSourcesJar"])
+            }
+        }
+        repositories {
+            // Publish to the local Maven repository
+            mavenLocal() 
+            
+            // Example: Publish to a remote repository (replace with your repo details)
+            /*
+            maven {
+                name = "MyCustomRepo"
+                url = uri("https://your-maven-repo.com/repository/maven-releases/")
+                credentials {
+                    username = System.getenv("MAVEN_USERNAME") ?: property("mavenUsername")?.toString()
+                    password = System.getenv("MAVEN_PASSWORD") ?: property("mavenPassword")?.toString()
+                }
+            }
+            */
+        }
+    }
+} 

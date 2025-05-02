@@ -4,7 +4,7 @@ project(cactus)
 
 set(CMAKE_CXX_STANDARD 17)
 # Use cactus as the C++ source directory
-set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/../../../cactus)
+set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/../../../../cactus)
 
 include_directories(${SOURCE_DIR})
 
@@ -56,7 +56,14 @@ set(
     ${SOURCE_DIR}/amx/mmq.cpp
     ${SOURCE_DIR}/minja/minja.hpp
     ${SOURCE_DIR}/minja/chat-template.hpp
-    ${SOURCE_DIR}/cactus.cpp
+    ${SOURCE_DIR}/cactus_completion.cpp
+    ${SOURCE_DIR}/cactus_context.cpp
+    ${SOURCE_DIR}/cactus_embedding.cpp
+    ${SOURCE_DIR}/cactus_loader.cpp
+    ${SOURCE_DIR}/cactus_lora.cpp
+    ${SOURCE_DIR}/cactus_utils.cpp
+    ${SOURCE_DIR}/cactus_bench.cpp
+    ${SOURCE_DIR}/cactus_chat.cpp
     ${CMAKE_SOURCE_DIR}/jni-utils.h
     ${CMAKE_SOURCE_DIR}/jni.cpp
 )

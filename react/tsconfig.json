@@ -24,5 +24,10 @@
     "strict": true,
     "target": "esnext",
     "verbatimModuleSyntax": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "lib",
+    "test-app"
+  ]
 }
