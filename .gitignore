@@ -126,19 +126,13 @@ ios/CMakelists.txt
 
 # === Android ===
 android/.gradle/
+.gradle
 android/app/build/
 android/build/
 android/.cxx/
 android/.externalNativeBuild/
-android/gradle/
-android/gradlew
-android/gradlew.bat
 android/gradle-wrapper.jar
 android/gradle-wrapper.properties
-kotlin/src/main/
-kotlin/.gradle/
-kotlin/gradle/
-kotlin/.cxx
 
 
 # === C++/CMake ===
