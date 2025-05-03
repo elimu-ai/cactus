@@ -60,19 +60,34 @@ class LlamaContext private constructor(
         checkClosed()
         val map = loadModelDetailsNative(contextPtr)
             ?: throw IllegalStateException("Failed to load model details, context invalid or native error.")
-        // TODO: Implement robust parsing from Map<String, Any?> to LlamaModelInfo
-        // This requires careful handling of types and potential nulls from JNI.
-        // Placeholder implementation:
+
+        // Use safeGet for basic properties
+        val description = map.safeGet("desc", "")
+        val sizeBytes = map.safeGet("size", 0.0) // JNI likely returns Double
+        val embeddingDim = map.safeGet("nEmbd", 0.0)
+        val paramCount = map.safeGet("nParams", 0.0)
+
+        // Handle nested metadata map carefully
+        val rawMetadata = map.safeGet<Map<*,*>>("metadata", emptyMap<Any, Any>())
+        val metadata = rawMetadata.mapNotNull { (key, value) ->
+            if (key is String && value is String) {
+                key to value
+            } else {
+                Log.w(TAG, "Skipping invalid metadata entry: key type=${key?.javaClass?.simpleName}, value type=${value?.javaClass?.simpleName}")
+                null
+            }
+        }.toMap()
+
+        // TODO: Parse chatTemplates map fully - Requires structure definition or more info
+        val chatTemplates = ChatTemplateInfo(false, MinjaTemplateInfo(false, false, null, null)) // Placeholder remains
+
         return LlamaModelInfo(
-            description = map["desc"] as? String ?: "",
-            sizeBytes = map["size"] as? Double ?: 0.0,
-            embeddingDim = map["nEmbd"] as? Double ?: 0.0,
-            paramCount = map["nParams"] as? Double ?: 0.0,
-            metadata = (map["metadata"] as? Map<*, *>)?.mapNotNull {
-                if (it.key is String && it.value is String) Pair(it.key as String, it.value as String) else null
-            }?.toMap() ?: emptyMap(),
-            chatTemplates = ChatTemplateInfo(false, MinjaTemplateInfo(false, false, null, null)) // Placeholder
-            // TODO: Parse chatTemplates map fully
+            description = description,
+            sizeBytes = sizeBytes,
+            embeddingDim = embeddingDim,
+            paramCount = paramCount,
+            metadata = metadata,
+            chatTemplates = chatTemplates
         )
     }
 
@@ -108,24 +123,31 @@ class LlamaContext private constructor(
             toolChoice ?: ""
         ) ?: throw IllegalStateException("Failed to format chat with Jinja, context invalid or native error occurred.")
 
-        // TODO: Robust parsing of the returned map
-        val triggersList = (map["grammar_triggers"] as? List<*>)?.mapNotNull { triggerMap ->
-            (triggerMap as? Map<*, *>)?.let {
-                GrammarTrigger(
-                    type = it["type"] as? Int ?: -1,
-                    value = it["value"] as? String ?: "",
-                    token = it["token"] as? Int
-                )
+        // Use safeGet and handle nested lists
+        val rawTriggersList = map.safeGet<List<*>>("grammar_triggers", emptyList<Any>())
+        val triggersList = rawTriggersList.mapNotNull { triggerMap ->
+            if (triggerMap !is Map<*, *>) {
+                Log.w(TAG, "Skipping invalid grammar_trigger entry: not a map")
+                return@mapNotNull null
             }
+            GrammarTrigger(
+                type = triggerMap.safeGet("type", -1),
+                value = triggerMap.safeGet("value", ""),
+                token = triggerMap.safeGet<Number?>("token", null)?.toInt() // Handle potential null and number type
+            )
         }
-        val preservedList = (map["preserved_tokens"] as? List<*>)?.mapNotNull { it as? String }
-        val stopsList = (map["additional_stops"] as? List<*>)?.mapNotNull { it as? String }
+
+        val rawPreservedList = map.safeGet<List<*>>("preserved_tokens", emptyList<Any>())
+        val preservedList = rawPreservedList.mapNotNull { it as? String ?: it?.toString()?.also { Log.w(TAG, "Non-string in preserved_tokens, using toString()") } }
+
+        val rawStopsList = map.safeGet<List<*>>("additional_stops", emptyList<Any>())
+        val stopsList = rawStopsList.mapNotNull { it as? String ?: it?.toString()?.also { Log.w(TAG, "Non-string in additional_stops, using toString()") } }
 
         return FormattedChatResult(
-            prompt = map["prompt"] as? String ?: "",
-            chatFormat = map["chat_format"] as? Int ?: -1,
-            grammar = map["grammar"] as? String,
-            grammarLazy = map["grammar_lazy"] as? Boolean ?: false,
+            prompt = map.safeGet("prompt", ""),
+            chatFormat = map.safeGet("chat_format", -1),
+            grammar = map.safeGet<String?>("grammar", null), // Allow null grammar
+            grammarLazy = map.safeGet("grammar_lazy", false),
             grammarTriggers = triggersList,
             preservedTokens = preservedList,
             additionalStops = stopsList
@@ -165,9 +187,10 @@ class LlamaContext private constructor(
         checkClosed()
         val map = loadSessionNative(contextPtr, path)
             ?: throw IllegalStateException("Failed to load session, context invalid or native error occurred.")
+        // Use safeGet
         return SessionLoadResult(
-            tokensLoaded = map["tokens_loaded"] as? Long ?: 0L,
-            prompt = map["prompt"] as? String ?: ""
+            tokensLoaded = map.safeGet("tokens_loaded", 0L), // Expect Long
+            prompt = map.safeGet("prompt", "")
         )
     }
 
@@ -256,35 +279,35 @@ class LlamaContext private constructor(
             partialCompletionCallback
         ) ?: throw IllegalStateException("Completion failed, context invalid or native error occurred.")
 
-        // TODO: Robust parsing of resultMap into LlamaCompletionResult
-        // Placeholder parsing:
-        val timingsMap = resultMap["timings"] as? Map<*, *>
+        // Use safeGet and handle timings map
+        val timingsMap = resultMap.safeGet<Map<*, *>>("timings", emptyMap<Any, Any>())
         val timings = Timings(
-            promptN = timingsMap?.get("prompt_n") as? Int ?: 0,
-            promptMs = timingsMap?.get("prompt_ms") as? Long ?: 0L,
-            promptPerTokenMs = timingsMap?.get("prompt_per_token_ms") as? Double ?: 0.0,
-            promptPerSecond = timingsMap?.get("prompt_per_second") as? Double ?: 0.0,
-            predictedN = timingsMap?.get("predicted_n") as? Int ?: 0,
-            predictedMs = timingsMap?.get("predicted_ms") as? Long ?: 0L,
-            predictedPerTokenMs = timingsMap?.get("predicted_per_token_ms") as? Double ?: 0.0,
-            predictedPerSecond = timingsMap?.get("predicted_per_second") as? Double ?: 0.0
+            promptN = timingsMap.safeGet("prompt_n", 0),
+            promptMs = timingsMap.safeGet("prompt_ms", 0L),
+            promptPerTokenMs = timingsMap.safeGet("prompt_per_token_ms", 0.0),
+            promptPerSecond = timingsMap.safeGet("prompt_per_second", 0.0),
+            predictedN = timingsMap.safeGet("predicted_n", 0),
+            predictedMs = timingsMap.safeGet("predicted_ms", 0L),
+            predictedPerTokenMs = timingsMap.safeGet("predicted_per_token_ms", 0.0),
+            predictedPerSecond = timingsMap.safeGet("predicted_per_second", 0.0)
         )
-        // ... parse tool calls, probabilities etc. ...
+        
+        // TODO: Parse tool calls, probabilities etc. robustly if their structure is known
 
         return LlamaCompletionResult(
-            text = resultMap["text"] as? String ?: "",
-            content = resultMap["content"] as? String,
-            reasoningContent = resultMap["reasoning_content"] as? String,
+            text = resultMap.safeGet("text", ""),
+            content = resultMap.safeGet<String?>("content", null), // Allow null
+            reasoningContent = resultMap.safeGet<String?>("reasoning_content", null), // Allow null
             toolCalls = null, // Placeholder
             completionProbabilities = null, // Placeholder
-            tokensPredicted = resultMap["tokens_predicted"] as? Int ?: 0,
-            tokensEvaluated = resultMap["tokens_evaluated"] as? Int ?: 0,
-            truncated = resultMap["truncated"] as? Boolean ?: false,
-            stoppedEos = resultMap["stopped_eos"] as? Boolean ?: false,
-            stoppedWord = resultMap["stopped_word"] as? Boolean ?: false,
-            stoppedLimit = resultMap["stopped_limit"] as? Boolean ?: false,
-            stoppingWord = resultMap["stopping_word"] as? String ?: "",
-            tokensCached = resultMap["tokens_cached"] as? Int ?: 0,
+            tokensPredicted = resultMap.safeGet("tokens_predicted", 0),
+            tokensEvaluated = resultMap.safeGet("tokens_evaluated", 0),
+            truncated = resultMap.safeGet("truncated", false),
+            stoppedEos = resultMap.safeGet("stopped_eos", false),
+            stoppedWord = resultMap.safeGet("stopped_word", false),
+            stoppedLimit = resultMap.safeGet("stopped_limit", false),
+            stoppingWord = resultMap.safeGet("stopping_word", ""),
+            tokensCached = resultMap.safeGet("tokens_cached", 0),
             timings = timings
         )
     }
@@ -341,9 +364,22 @@ class LlamaContext private constructor(
         val map = embeddingNative(contextPtr, text, normalize)
             ?: throw IllegalStateException("Embedding generation failed, context invalid or native error occurred.")
         
-        // TODO: Robust parsing
-        val embeddingList = (map["embedding"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() } ?: emptyList()
-        val tokensList = (map["prompt_tokens"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+        // Use safeGet and handle lists
+        val rawEmbeddingList = map.safeGet<List<*>>("embedding", emptyList<Any>())
+        val embeddingList = rawEmbeddingList.mapNotNull { 
+            (it as? Number)?.toFloat() ?: run {
+                Log.w(TAG, "Non-number found in embedding list: $it")
+                null
+            }
+        }
+        
+        val rawTokensList = map.safeGet<List<*>>("prompt_tokens", emptyList<Any>())
+        val tokensList = rawTokensList.mapNotNull { 
+            it as? String ?: run {
+                Log.w(TAG, "Non-string found in prompt_tokens list: $it")
+                it?.toString() // Fallback to toString()
+            }
+        }
 
         return LlamaEmbeddingResult(
             embedding = embeddingList,
@@ -706,5 +742,51 @@ class LlamaContext private constructor(
 
         @JvmStatic
         internal external fun getLoadedLoraAdaptersNative(contextPtr: Long): List<Map<String, Any?>>? // JNI returns jobject (List)
+    }
+}
+
+// Helper extension function for safer map access from JNI results
+private fun <T> Map<*, *>?.safeGet(key: String, defaultValue: T): T {
+    if (this == null) {
+        Log.w("LlamaContext.safeGet", "Attempting to get '$key' from a null map. Returning default.")
+        return defaultValue
+    }
+    if (!this.containsKey(key)) {
+        Log.w("LlamaContext.safeGet", "Key '$key' not found in map. Returning default.")
+        return defaultValue
+    }
+    val value = this[key]
+    if (value == null) {
+        // Allow null default value to be returned if the key exists but value is null
+        if (defaultValue == null) {
+            @Suppress("UNCHECKED_CAST")
+            return null as T
+        }
+        Log.w("LlamaContext.safeGet", "Value for key '$key' is null. Returning default.")
+        return defaultValue
+    }
+    // Check if the value's type matches the default value's type (simple check)
+    // Note: This won't work perfectly for generic types, but covers basic cases like String, Double, Int, Boolean, Map, List
+    if (defaultValue != null && value::class != defaultValue::class && !(value is Number && defaultValue is Number)) {
+         // Allow casting between number types (e.g., JNI Double to Kotlin Int/Long/Float)
+        if (value is Number && defaultValue is Number) {
+             // Attempt numeric conversion
+            return when (defaultValue) {
+                is Int -> value.toInt() as? T ?: defaultValue.also { Log.w("LlamaContext.safeGet", "Failed Number cast for '$key' from ${value::class.simpleName} to Int. Returning default.") }
+                is Long -> value.toLong() as? T ?: defaultValue.also { Log.w("LlamaContext.safeGet", "Failed Number cast for '$key' from ${value::class.simpleName} to Long. Returning default.") }
+                is Float -> value.toFloat() as? T ?: defaultValue.also { Log.w("LlamaContext.safeGet", "Failed Number cast for '$key' from ${value::class.simpleName} to Float. Returning default.") }
+                is Double -> value.toDouble() as? T ?: defaultValue.also { Log.w("LlamaContext.safeGet", "Failed Number cast for '$key' from ${value::class.simpleName} to Double. Returning default.") }
+                else -> defaultValue.also { Log.w("LlamaContext.safeGet", "Unsupported Number cast for '$key' to ${defaultValue::class.simpleName}. Returning default.") }
+            }
+        }
+        Log.w("LlamaContext.safeGet", "Type mismatch for key '$key'. Expected ~${defaultValue::class.simpleName}, got ${value::class.simpleName}. Returning default.")
+        return defaultValue
+    }
+    try {
+        @Suppress("UNCHECKED_CAST")
+        return value as T
+    } catch (e: ClassCastException) {
+        Log.w("LlamaContext.safeGet", "ClassCastException for key '$key'. Expected ${defaultValue!!::class.simpleName}, got ${value::class.simpleName}. Returning default.", e)
+        return defaultValue
     }
 } 
