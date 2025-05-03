@@ -20,5 +20,5 @@ dependencyResolutionManagement {
 rootProject.name = "CactusAndroidLib"
 
 // Include subprojects if you had any (currently, you only have the root acting as the library)
-include(":app") 
+include(":test-app") 
 // include(":library") // If you restructure later 

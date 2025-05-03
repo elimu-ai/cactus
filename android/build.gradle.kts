@@ -5,7 +5,7 @@ plugins {
     // Apply plugins directly with versions
     id("com.android.library") version "8.4.1"
     id("org.jetbrains.kotlin.android") version "1.9.23"
-    // id("maven-publish") // Add this later if/when you want to publish to Maven
+    id("maven-publish") // Add this later if/when you want to publish to Maven
 }
 
 // Apply the plugins to this specific module (the root project in this case)
@@ -13,6 +13,8 @@ plugins {
 // apply(plugin = "org.jetbrains.kotlin.android")
 
 // id("maven-publish") // Add this later if/when you want to publish to Maven
+
+import com.android.build.api.dsl.AndroidSourceDirectorySet
 
 android {
     namespace = "com.cactus.android" // Use the package name we decided on
@@ -87,43 +89,54 @@ dependencies {
 // Add this block at the end of android/build.gradle.kts
 
 // Add task to generate sources JAR (optional but recommended)
-tasks.register<Jar>("androidSourcesJar") {
-    archiveClassifier.set("sources")
-    from(android.sourceSets.getByName("main").java.srcDirs)
-    from(android.sourceSets.getByName("main").kotlin.srcDirs)
-}
+// tasks.register<Jar>("androidSourcesJar") {
+//     archiveClassifier.set("sources")
+//     from(android.sourceSets.getByName("main").java.srcDirs)
+//     // Explicitly specify the Kotlin source directory path
+//     from("src/main/kotlin")
+// }
 
-afterEvaluate { // Ensures android components are ready
-    publishing {
-        publications {
-            create<MavenPublication>("release") {
-                // Define your library's coordinates
-                groupId = "com.example.cactus" 
-                artifactId = "cactus-android" 
-                version = "0.0.1" 
+// Add the publishing block here, outside afterEvaluate
+publishing {
+    publications {
+        create<MavenPublication>("release") {
+            // groupId updated for GitHub Packages convention
+            groupId = "io.github.cactus-compute"
+            artifactId = "cactus-android"
+            version = "0.0.1" // Keep version or update as needed
 
-                // Tell Maven to publish the AAR file built by the 'release' build type
+            // Pulls artifacts from the Android 'release' component
+            afterEvaluate {
                 from(components["release"]) 
+            }
 
-                // Include sources jar (optional)
-                artifact(tasks["androidSourcesJar"])
+            // Minimal POM details (optional but good practice)
+            pom {
+                name.set("Cactus Android Library") 
+                description.set("An example Android library wrapping native code.")
+                // Update URL if your repo structure is different
+                url.set("https://github.com/cactus-compute/cactus") 
+                // Add license, developers, scm if desired
             }
-        }
-        repositories {
-            // Publish to the local Maven repository
-            mavenLocal() 
-            
-            // Example: Publish to a remote repository (replace with your repo details)
-            /*
-            maven {
-                name = "MyCustomRepo"
-                url = uri("https://your-maven-repo.com/repository/maven-releases/")
-                credentials {
-                    username = System.getenv("MAVEN_USERNAME") ?: property("mavenUsername")?.toString()
-                    password = System.getenv("MAVEN_PASSWORD") ?: property("mavenPassword")?.toString()
-                }
-            }
-            */
         }
     }
-} 
+    repositories {
+        // Removed mavenLocal()
+        // Configure GitHub Packages repository
+        maven {
+            name = "GitHubPackages"
+            // Assumes repository name is 'cactus' under 'cactus-compute'
+            url = uri("https://maven.pkg.github.com/cactus-compute/cactus") 
+            credentials {
+                // Reads credentials from ~/.gradle/gradle.properties
+                username = project.findProperty("gpr.user")?.toString()
+                password = project.findProperty("gpr.key")?.toString()
+            }
+        }
+    }
+}
+
+// Explicitly configure the generated metadata task to depend on the sources jar task
+// tasks.named("generateMetadataFileForReleasePublication") {
+//     dependsOn(tasks.named("androidSourcesJar"))
+// } 

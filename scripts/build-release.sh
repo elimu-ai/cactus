@@ -67,10 +67,15 @@ if [ "$release_flutter" = true ]; then
 fi
 
 # Release the Android library if flag is set
+# create a file ~/.gradle/gradle.properties in the android directory
+# add the following:
+# gpr.user=cactus-compute
+# gpr.key=GITHUB_TOKEN 
+
 if [ "$release_android" = true ]; then
   echo "Releasing Android library..."
   cd "$ROOT_DIR/android"
-  ./gradlew publishReleasePublicationToMavenRepository
+  ./gradlew publishReleasePublicationToGitHubPackagesRepository
   cd ..
 fi
 
