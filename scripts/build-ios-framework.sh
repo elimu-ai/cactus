@@ -66,6 +66,12 @@ function build_framework() {
     cp "$ROOT_DIR/cactus/ggml-llama.metallib" "$FRAMEWORK_DEST/ggml-llama.metallib"
   fi
 
+  # Create Modules directory and copy module map
+  MODULES_DEST="$FRAMEWORK_DEST/Modules"
+  mkdir -p "$MODULES_DEST"
+  # Assuming module.modulemap is now in the CactusKit root, adjust path if needed
+  cp "$ROOT_DIR/CactusKit/module.modulemap" "$MODULES_DEST/module.modulemap"
+
   # Only now is it safe to delete the build directory contents
   rm -rf ./*
   cd ..
