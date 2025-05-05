@@ -18,7 +18,8 @@ cd "$ROOT_DIR/react"
 echo "Copying iOS frameworks to React Native project..."
 
 # Copy the iOS framework and project files
-cp -R "$ROOT_DIR/ios"/* ios/
+cp -R "$ROOT_DIR/ios"/cactus.xcframework ios/
+cp -R "$ROOT_DIR/ios"/CMakeLists.txt ios/
 
 echo "Building React Native package..." 
 yarn 
