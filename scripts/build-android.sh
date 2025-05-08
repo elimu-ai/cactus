@@ -14,7 +14,8 @@ cd "$ANDROID_DIR"
 
 echo "Building Android library (Release)..."
 # Clean previous build and assemble the release AAR
-./gradlew clean assembleRelease
+./gradlew clean 
+./gradlew build
 
 echo "Android library build completed successfully."
 

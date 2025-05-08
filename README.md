@@ -77,7 +77,7 @@ Cactus Models coming soon.
 └───────────────┬─────────────────┬───────────────────────-┘
                 │                 │                
 ┌───────────────▼─────────────────▼───────────────────────┐
-│                   Cactus Core (C++)                     │
+│                   Cactus Core (C++) / llama.rn API      │
 └───────────────┬─────────────────┬───────────────────────┘
                 │                 │                
 ┌───────────────▼─────┐ ┌─────────▼───────────────────────┐
@@ -95,26 +95,43 @@ Cactus Models coming soon.
   - Battery-efficient inference
   - Background processing
 
-## Benchmarks 
+## Benchmarks
 
 we created a little chat app for demo, you can try other models and report your finding here, [download the app](https://lnkd.in/dYGR54hn)
 
-Gemma 1B INT8:
-- iPhone 13 Pro: ~30 toks/sec 
-- Galaxy S21: ~14 toks/sec 
-- Google Pixel 6a: ~14 toks/sec 
-- Galaxy S24 plus: ~20 toks/sec 
+These are day-to-day usage scores, NOT a controlled environment.
 
-SmollLM 135m INT8: 
-- iPhone 13 Pro: ~180 toks/sec
-- Galaxy S21: ~42 toks/sec
-- Google Pixel 6a: ~38 toks/sec
-- Huawei P60 Lite (Gran's phone) ~8toks/sec
+| Device                       | Gemma 3 1B INT8 (toks/sec) | Qwen 2.5 1.5B INT8 (toks/sec) |
+|------------------------------|----------------------------|-------------------------------|
+| iPhone 16 Pro Max            | 45                         | 28                            |
+| iPhone 16 Pro                | N/A                        | 28                            |
+| iPhone 16                    | N/A                        | 27                            |
+| iPhone 15 Pro Max            | N/A                        | 23                            |
+| iPhone 15 Pro                | N/A                        | 23                            |
+| iPhone 15                    | N/A                        | 23                            |
+| iPhone 13 Pro                | 30                         | N/A                           |
+| iPhone 12 mini               | 21                         | N/A                           |
+| Galaxy S25 Ultra             | 25                         | N/A                           |
+| Galaxy S24+                  | 20                         | N/A                           |
+| Galaxy S22 Ultra             | 16                         | N/A                           |
+| Galaxy S21                   | 14                         | N/A                           |
+| Galaxy A14                   | 6                          | N/A                           |
+| Google Pixel 8               | 14                         | N/A                           |
+| Google Pixel 6a              | 14                         | N/A                           |
+| Oneplus 13                   | 34                         | N/A                           |
+| Oneplus 12                   | 23                         | N/A                           |
+| Oneplus Nord CE Lite         | 10                         | N/A                           |
+| Xiaomi Redmi k70 Ultra       | 19                         | N/A                           |
+| Moto G62 5G (Gran's Phone)   | 6                          | N/A                           |
+| Huawei P60 Lite (Gran's phone)| N/A                        | N/A                           |
 
+## Examples
+We have ready-to-run-and-deploy examples [here](https://github.com/cactus-compute/cactus/tree/main/examples), you can simply copy, modify and deploy! And reach out if stuck or need hand-holding.
 
 ## Getting Started
 
-### ✅ React Native (shipped)
+
+### ✅ React Native (TypeScript/JavaScript)
 
 ```bash
 npm install cactus-react-native
@@ -155,6 +172,38 @@ For more detailed documentation and examples, see the [React Native README](reac
 
 ### ✅ Android (Kotlin/Java)
 
+**Important: Credentials Required for GitHub Packages**
+
+Accessing the Cactus Android library via GitHub Packages now requires authentication. You'll need to use a GitHub Personal Access Token (PAT) with the `read:packages` scope.
+
+**Steps to Get and Use Credentials:**
+
+1.  **Generate a GitHub PAT:**
+    *   Go to your GitHub [Developer settings](https://github.com/settings/tokens).
+    *   Click "Generate new token" (select classic or fine-grained).
+    *   Give your token a descriptive name (e.g., `cactus-android-dependency`).
+    *   Select the `read:packages` scope.
+    *   Click "Generate token" and **copy the token immediately**. You won't be able to see it again.
+
+2.  **Store Your Credentials Securely:**
+    Do **not** hardcode your PAT directly into your `settings.gradle.kts` file. Instead, use one of the following methods:
+
+    *   **Using `local.properties` (Recommended for local development):**
+        1.  Create or open the `local.properties` file in your Android project's root directory (the same directory as `gradle.properties`). If it's not there, create it.
+        2.  Add the following lines, replacing `YOUR_GITHUB_USERNAME` with your GitHub username and `YOUR_PAT` with the token you generated:
+            ```properties
+            gpr.user=YOUR_GITHUB_USERNAME
+            gpr.key=YOUR_PAT
+            ```
+        3.  Ensure `local.properties` is listed in your project's `.gitignore` file to prevent committing your credentials.
+
+    *   **Using Environment Variables (Recommended for CI/CD or shared environments):**
+        Set the following environment variables in your build environment:
+        *   `GPR_USER`: Your GitHub username.
+        *   `GPR_KEY`: Your GitHub PAT.
+
+        The `settings.gradle.kts` file is configured to read these from `local.properties` first, then fall back to environment variables.
+
 **1. Add Repository to `settings.gradle.kts`:**
 
 ```kotlin
@@ -168,6 +217,10 @@ dependencyResolutionManagement {
         maven {
             name = "GitHubPackagesCactusCompute"
             url = uri("https://maven.pkg.github.com/cactus-compute/cactus")
+            credentials {
+                username = project.findProperty("gpr.user") as String? ?: System.getenv("GPR_USER")
+                password = project.findProperty("gpr.key") as String? ?: System.getenv("GPR_KEY")
+            }
         }
     }
 }
@@ -178,8 +231,7 @@ dependencyResolutionManagement {
 ```kotlin
 // app/build.gradle.kts
 dependencies {
-    // Replace x.y.z with the desired version (e.g., 0.0.1)
-    implementation("io.github.cactus-compute:cactus-android:x.y.z")
+    implementation("io.github.cactus-compute:cactus-android:0.0.1")
 }
 ```
 
@@ -236,6 +288,6 @@ For more detailed documentation and examples, see the [Android README](android/R
 
 ### 🚧 Swift (in developement)
 
-### 🚧 Android (in developement)
+### 🚧 Flutter (in developement)
 
 ```

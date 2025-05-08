@@ -1,47 +1,61 @@
-package com.cactus.android.app
+package com.example.android_chat
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import androidx.fragment.app.Fragment
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import com.cactus.android.LlamaContext
 import com.cactus.android.LlamaInitParams
 import com.cactus.android.LlamaCompletionParams
-import com.cactus.android.app.databinding.ActivityMainBinding // Import ViewBinding class
+import com.example.android_chat.databinding.FragmentFirstBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File 
+import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
-class MainActivity : AppCompatActivity() {
+/**
+ * A simple [Fragment] subclass as the default destination in the navigation.
+ */
+class FirstFragment : Fragment() {
 
-    private lateinit var binding: ActivityMainBinding
-    private val TAG = "MainActivity"
+    private var _binding: FragmentFirstBinding? = null
+
+    // This property is only valid between onCreateView and
+    // onDestroyView.
+    private val binding get() = _binding!!
+
+    private val TAG = "FirstFragment"
 
     // Model download constants
-    private val modelUrl = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q8_0.gguf"
-    private val modelFileName = "QWEN2.5-1.5B-INST-Q8_0.gguf"
-    private lateinit var modelFile: File // Will be initialized in onCreate
+    private val modelUrl = "https://huggingface.co/QuantFactory/SmolLM2-135M-GGUF/resolve/main/SmolLM2-135M.Q8_0.gguf"
+    private val modelFileName = "SmolLM2-135M.Q8_0.gguf"
+    private lateinit var modelFile: File
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentFirstBinding.inflate(inflater, container, false)
+        return binding.root
+    }
 
-        // Initialize the target model file path in internal storage
-        modelFile = File(filesDir, modelFileName)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-        binding.buttonRunInference.setOnClickListener { runInference() }
+        // Initialize the target model file path in internal storage accessible to this app
+        modelFile = File(requireContext().filesDir, modelFileName)
+
         binding.editTextModelPath.setText(modelFile.absolutePath) // Show the target path
-        binding.editTextModelPath.isEnabled = false // Disable editing the path for now
+        binding.buttonRunInference.setOnClickListener { runInference() }
 
-        // Start model download check when the activity is created
         downloadModelIfNeeded()
     }
 
@@ -69,9 +83,9 @@ class MainActivity : AppCompatActivity() {
                     throw RuntimeException("Server returned HTTP ${connection.responseCode} ${connection.responseMessage}")
                 }
 
-                val fileSize = connection.contentLength // Get file size for progress (optional)
+                val fileSize = connection.contentLength
                 val inputStream: InputStream = connection.inputStream
-                val outputStream = FileOutputStream(modelFile)
+                val outputStream = FileOutputStream(modelFile) // Save to app's internal files dir
                 val buffer = ByteArray(4096)
                 var bytesRead: Int
                 var totalBytesRead = 0L
@@ -79,11 +93,10 @@ class MainActivity : AppCompatActivity() {
                 while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                     outputStream.write(buffer, 0, bytesRead)
                     totalBytesRead += bytesRead
-                    // Optional: Calculate and display progress
                     val progress = if (fileSize > 0) (totalBytesRead * 100 / fileSize).toInt() else -1
                     withContext(Dispatchers.Main) {
-                         binding.textViewOutput.text = "Downloading model... ${totalBytesRead / (1024*1024)} MB" + 
-                                                      if(progress >= 0) " ($progress%)" else ""
+                        binding.textViewOutput.text = "Downloading model... ${totalBytesRead / (1024 * 1024)} MB" +
+                                if (progress >= 0) " ($progress%)" else ""
                     }
                 }
 
@@ -96,12 +109,10 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e(TAG, "Model download failed", e)
                 errorMessage = e.message ?: "Unknown download error"
-                // Attempt to delete partial file on error
                 if (modelFile.exists()) {
                     modelFile.delete()
                 }
             } finally {
-                // Update UI on the main thread
                 withContext(Dispatchers.Main) {
                     if (success) {
                         binding.textViewOutput.text = "Model downloaded. Ready for inference."
@@ -116,53 +127,50 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun runInference() {
-        val modelPath = modelFile.absolutePath // Use the internal storage path
+        val modelPath = modelFile.absolutePath
         val prompt = binding.editTextPrompt.text.toString().trim()
 
         if (!modelFile.exists()) {
-            binding.textViewOutput.text = "Error: Model file not found at: $modelPath\nTry restarting the app to download."
-            downloadModelIfNeeded() // Try downloading again
+            binding.textViewOutput.text = "Error: Model file not found at: $modelPath\nTry restarting the app or view logs."
+            downloadModelIfNeeded() // Offer to download again
             return
         }
-         if (prompt.isEmpty()) {
-            Toast.makeText(this, "Please enter a prompt", Toast.LENGTH_SHORT).show()
+        if (prompt.isEmpty()) {
+            Toast.makeText(context, "Please enter a prompt", Toast.LENGTH_SHORT).show()
             return
         }
 
         binding.textViewOutput.text = "Loading model and running inference..."
         binding.buttonRunInference.isEnabled = false
 
-        // Run model loading and inference in a background thread
         lifecycleScope.launch(Dispatchers.IO) {
             var resultText = "Error occurred"
             try {
-                // --- Library Interaction --- 
                 val initParams = LlamaInitParams(
                     modelPath = modelPath,
-                    nCtx = 512 // Keep low for testing
-                    // Add other basic params if needed, avoid LoRA/callbacks for now
+                    nCtx = 512 // Example context size
                 )
-                
-                // Use .use for automatic context.close()
+
                 LlamaContext.create(initParams).use { context ->
                     Log.i(TAG, "LlamaContext created successfully.")
-                    
+
                     val completionParams = LlamaCompletionParams(
                         temperature = 0.7f,
-                        nPredict = 128 // Limit prediction length for testing
-                        // Add other basic sampling params if needed
+                        nPredict = 128 // Example prediction length
                     )
 
                     Log.i(TAG, "Running completion with prompt: '$prompt'")
-                    // Call the native method - expect Map for now
+                    // Assuming doCompletionNative is the method from your library
+                    // and it returns a Map<String, Any?> or similar.
+                    // Adjust according to the actual signature in your LlamaContext.
                     val resultMap = LlamaContext.doCompletionNative(
-                        context.contextPtr, // Access internal pointer (or make it public in library)
+                        context.contextPtr, 
                         prompt,
                         completionParams.chatFormat,
                         completionParams.grammar ?: "",
                         completionParams.grammarLazy,
-                        emptyList(), // Placeholder for grammarTriggers
-                        emptyList(), // Placeholder for preservedTokens
+                        emptyList(), // grammarTriggers
+                        emptyList(), // preservedTokens
                         completionParams.temperature,
                         completionParams.nThreads,
                         completionParams.nPredict,
@@ -190,16 +198,15 @@ class MainActivity : AppCompatActivity() {
                         completionParams.dryPenaltyLastN,
                         completionParams.topNSigma,
                         completionParams.drySequenceBreakers?.toTypedArray() ?: emptyArray(),
-                        null // No partial callback for now
+                        null // partial_completion_callback
                     )
-                    
+
                     if (resultMap != null) {
                         Log.i(TAG, "Completion successful (raw map): $resultMap")
-                        // Extract just the text for now, as LlamaCompletionResult parsing is TODO
                         resultText = resultMap["text"] as? String ?: "(No text found in result map)"
                     } else {
-                         Log.e(TAG, "Completion failed: Native method returned null.")
-                         resultText = "Completion failed: Native method returned null."
+                        Log.e(TAG, "Completion failed: Native method returned null.")
+                        resultText = "Completion failed: Native method returned null."
                     }
                 }
 
@@ -207,7 +214,6 @@ class MainActivity : AppCompatActivity() {
                 Log.e(TAG, "Error during Llama operation", e)
                 resultText = "Error: ${e.message ?: e.toString()}"
             } finally {
-                // Update UI back on the main thread
                 withContext(Dispatchers.Main) {
                     binding.textViewOutput.text = resultText
                     binding.buttonRunInference.isEnabled = true
@@ -216,5 +222,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // No need for onDestroy handling if using .use block
-} 
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}

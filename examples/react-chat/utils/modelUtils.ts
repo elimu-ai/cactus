@@ -2,11 +2,11 @@ import { initLlama, LlamaContext } from "cactus-react-native";
 import { Platform } from "react-native";
 import * as FileSystem from 'expo-file-system';
 
-const modelName = 'SmolLM-135.gguf';
+const modelName = 'QWEN2.5-1.5B-INST-Q8_0.gguf';
 const modelDirectory = Platform.OS === 'ios' ? `${FileSystem.documentDirectory}local-models/`: `${FileSystem.cacheDirectory}local-models/`;
 const fullModelPath = `${modelDirectory}${modelName}`;
 
-const modelUrl = 'https://huggingface.co/QuantFactory/SmolLM2-135M-GGUF/resolve/main/SmolLM2-135M.Q8_0.gguf';
+const modelUrl = 'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q8_0.gguf';
 
 async function modelExists(): Promise<Boolean> {
     return (await FileSystem.getInfoAsync(fullModelPath)).exists;
