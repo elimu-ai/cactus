@@ -37,7 +37,6 @@ export class ModelDownloader {
         if (!isValid) {
             throw new Error("Invalid model URL")
         }
-        console.log('validateURLFormat', isValid)
     }
 
     parseModelName() {
@@ -52,7 +51,6 @@ export class ModelDownloader {
             await RNFS.mkdir(this.fullModelFolderPath)
             console.log('Model folder created', this.fullModelFolderPath)
         }
-        console.log('model folder exists', this.fullModelFolderPath)
     }
 
     async downloadModelIfNotExists(
@@ -61,15 +59,13 @@ export class ModelDownloader {
     ): Promise<string> {
         if (!(await RNFS.exists(this.fullModelPath))) {
             await this.createModelFolder()
-            console.log('downloading model...')
             await RNFS.downloadFile({
                 fromUrl: this.modelUrl,
                 toFile: this.fullModelPath,
-                begin: (response: RNFS.DownloadBeginCallbackResult) => {console.log('begin', response)}, // if you don't provide begin, progress won't work!!
-                // progress: onProgress ? (response: RNFS.DownloadProgressCallbackResult) => {console.log('progress', response)} : ()=>{},
+                begin: (_: RNFS.DownloadBeginCallbackResult) => {}, // if you don't provide begin, progress won't work!!
                 progress: onProgress ? (response: RNFS.DownloadProgressCallbackResult) => {
                     if (response.contentLength > 0) {
-                        let percentage = Math.floor(response.bytesWritten/response.contentLength*100);
+                        let percentage = Math.floor(response.bytesWritten/response.contentLength*10000)/100;
                         onProgress(percentage)
                     }
                 } : () => {},

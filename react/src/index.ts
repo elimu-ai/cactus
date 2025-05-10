@@ -502,7 +502,6 @@ type DownloadOptions = {
 export function downloadModelIfNotExists(
   options: DownloadOptions
 ): Promise<string> {
-  console.log('downloadModelIfNotExists', options)
   const modelDownloader = new ModelDownloader(options.modelUrl , options.modelFolderName)
   return modelDownloader.downloadModelIfNotExists(options.onProgress, options.onSuccess)
 }
