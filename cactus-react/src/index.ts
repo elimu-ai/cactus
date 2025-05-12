@@ -1,48 +1,34 @@
-import { NativeEventEmitter, DeviceEventEmitter, Platform } from 'react-native'
 import type { DeviceEventEmitterStatic } from 'react-native'
-import Cactus from './NativeCactus'
+import { DeviceEventEmitter, NativeEventEmitter, Platform } from 'react-native'
 import type {
-  NativeContextParams,
-  NativeLlamaContext,
-  NativeCompletionParams,
-  NativeCompletionTokenProb,
-  NativeCompletionResult,
-  NativeTokenizeResult,
-  NativeEmbeddingResult,
-  NativeSessionLoadResult,
-  NativeEmbeddingParams,
-  NativeCompletionTokenProbItem,
-  NativeCompletionResultTimings,
   JinjaFormattedChatResult,
+  NativeCompletionParams,
+  NativeCompletionResult,
+  NativeCompletionResultTimings,
+  NativeCompletionTokenProb,
+  NativeCompletionTokenProbItem,
+  NativeContextParams,
+  NativeEmbeddingParams,
+  NativeEmbeddingResult,
+  NativeLlamaContext,
+  NativeSessionLoadResult,
+  NativeTokenizeResult,
 } from './NativeCactus'
+import Cactus from './NativeCactus'
+import type { CactusMessagePart, CactusOAICompatibleMessage } from './chat'
+import { formatChat } from './chat'
 import type {
-  SchemaGrammarConverterPropOrder,
   SchemaGrammarConverterBuiltinRule,
+  SchemaGrammarConverterPropOrder,
 } from './grammar'
 import { SchemaGrammarConverter, convertJsonSchemaToGrammar } from './grammar'
-import type { CactusMessagePart, CactusOAICompatibleMessage } from './chat'
-import { ModelDownloader } from './modelDownloader'
-import { formatChat } from './chat'
-
+import { Tools } from './tools'
 export type {
-  NativeContextParams,
-  NativeLlamaContext,
-  NativeCompletionParams,
-  NativeCompletionTokenProb,
-  NativeCompletionResult,
-  NativeTokenizeResult,
-  NativeEmbeddingResult,
-  NativeSessionLoadResult,
-  NativeEmbeddingParams,
-  NativeCompletionTokenProbItem,
-  NativeCompletionResultTimings,
   CactusMessagePart,
   CactusOAICompatibleMessage,
-  JinjaFormattedChatResult,
-
+  JinjaFormattedChatResult, NativeCompletionParams, NativeCompletionResult, NativeCompletionResultTimings, NativeCompletionTokenProb, NativeCompletionTokenProbItem, NativeContextParams, NativeEmbeddingParams, NativeEmbeddingResult, NativeLlamaContext, NativeSessionLoadResult, NativeTokenizeResult, SchemaGrammarConverterBuiltinRule,
   // Deprecated
-  SchemaGrammarConverterPropOrder,
-  SchemaGrammarConverterBuiltinRule,
+  SchemaGrammarConverterPropOrder
 }
 
 export { SchemaGrammarConverter, convertJsonSchemaToGrammar }
@@ -228,6 +214,140 @@ export class LlamaContext {
     })
   }
 
+  async completionWithTools(
+    params: CompletionParams & {tools: Tools},
+    callback?: (data: TokenData) => void,
+  ): Promise<NativeCompletionResult> {
+    const nativeParams = {
+      ...params,
+      prompt: params.prompt || '',
+      emit_partial_completion: !!callback,
+    }
+    const messages = [...params?.messages || []];
+    if (params.messages) {
+      // messages always win
+      
+      // Clone messages to avoid mutating the original
+      const toolsSchemas = params.tools.getSchemas();
+
+      // If tools are present, inject them into the system message
+      if (params.tools) {
+        console.log('Injecting tools...')
+        const promptToolInjection = `You have access to the following functions. Use them if required - 
+${JSON.stringify(toolsSchemas, null, 2)}
+Only use an available tool if needed. If a tool is chosen, respond ONLY with a JSON object matching the following schema:
+\`\`\`json
+{
+  "tool_name": "<name of the tool>",
+  "tool_input": {
+    "<parameter_name>": "<parameter_value>",
+    ...
+  }
+}
+\`\`\`
+Remember, if you are calling a tool, you must respond with the JSON object and the JSON object ONLY!
+If no tool is needed, respond normally.
+        `
+        const systemMessage = messages.find(m => m.role === 'system');
+        if (!systemMessage) {
+          messages.unshift({
+            role: 'system',
+            content: promptToolInjection
+          })
+        } else {
+          systemMessage.content = `${systemMessage.content}\n\n${promptToolInjection}`
+        }
+      }
+
+      // console.log('Messages:', JSON.stringify(messages, null, 2));
+
+      const formattedResult = await this.getFormattedChat(
+        messages,
+        params.chat_template || params.chatTemplate,
+        {
+          jinja: params.jinja,
+          tools: toolsSchemas,
+          parallel_tool_calls: params.parallel_tool_calls,
+          tool_choice: params.tool_choice,
+        },
+      )
+      if (typeof formattedResult === 'string') {
+        nativeParams.prompt = formattedResult || ''
+      } else {
+        nativeParams.prompt = formattedResult.prompt || ''
+        if (typeof formattedResult.chat_format === 'number')
+          nativeParams.chat_format = formattedResult.chat_format
+        if (formattedResult.grammar)
+          nativeParams.grammar = formattedResult.grammar
+        if (typeof formattedResult.grammar_lazy === 'boolean')
+          nativeParams.grammar_lazy = formattedResult.grammar_lazy
+        if (formattedResult.grammar_triggers)
+          nativeParams.grammar_triggers = formattedResult.grammar_triggers
+        if (formattedResult.preserved_tokens)
+          nativeParams.preserved_tokens = formattedResult.preserved_tokens
+        if (formattedResult.additional_stops) {
+          if (!nativeParams.stop) nativeParams.stop = []
+          nativeParams.stop.push(...formattedResult.additional_stops)
+        }
+      }
+    } else {
+      nativeParams.prompt = params.prompt || ''
+    }
+
+    if (nativeParams.response_format && !nativeParams.grammar) {
+      const jsonSchema = getJsonSchema(params.response_format)
+      if (jsonSchema) nativeParams.json_schema = JSON.stringify(jsonSchema)
+    }
+
+    let tokenListener: any =
+      callback &&
+      EventEmitter.addListener(EVENT_ON_TOKEN, (evt: TokenNativeEvent) => {
+        const { contextId, tokenResult } = evt
+        if (contextId !== this.id) return
+        callback(tokenResult)
+      })
+
+    if (!nativeParams.prompt) throw new Error('Prompt is required')
+
+    const promise = Cactus.completion(this.id, nativeParams)
+
+    return promise.then(async (completionResult) => {
+      const toolCallMatch = completionResult.content.match(/```json\s*([\s\S]*?)\s*```/);
+      if (toolCallMatch) {
+        const jsonContent = JSON.parse(toolCallMatch[1]);
+        const { tool_name, tool_input } = jsonContent;
+        console.log('Calling tool:', tool_name, tool_input);
+        const result = await params.tools.execute(tool_name, tool_input);
+        console.log('Tool called result:', result);
+        messages.push({
+          role: 'function-call',
+          content: {
+            name: tool_name,
+            arguments: tool_input,
+          },
+        });
+        messages.push({
+          role: 'function-response',
+          content: result,
+        });
+        return this.completionWithTools({...params, messages}, callback)
+      }
+      return completionResult;
+    })
+
+    // return promise
+    //   .then((completionResult) => {
+    //     tokenListener?.remove()
+    //     tokenListener = null
+    //     return completionResult
+    //   })
+    //   .catch((err: any) => {
+    //     tokenListener?.remove()
+    //     tokenListener = null
+    //     throw err
+    //   })
+  }
+
   async completion(
     params: CompletionParams,
     callback?: (data: TokenData) => void,
@@ -239,6 +359,7 @@ export class LlamaContext {
     }
     if (params.messages) {
       // messages always win
+
       const formattedResult = await this.getFormattedChat(
         params.messages,
         params.chat_template || params.chatTemplate,
@@ -480,28 +601,4 @@ export async function initLlama(
 
 export async function releaseAllLlama(): Promise<void> {
   return Cactus.releaseAllContexts()
-}
-
-
-type DownloadOptions = {
-  modelUrl?: string;
-  modelFolderName?: string;
-  onProgress?: (progress: number) => void;
-  onSuccess?: (modelPath: string) => void;
-};
-
-/**
- * Download a model from a given URL and save it to a given folder name.
- * @param options - The options for the download.
- * @param options.modelUrl - The URL of the model to download. If not provided, the default model URL will be used.
- * @param options.modelFolderName - The folder name to save the model to. If not provided, the default model folder name will be used.
- * @param options.onProgress - A callback function that is called with the progress of the download. Returns a percentage of the download as an integer. Useful for displaying a progress bar.
- * @param options.onSuccess - A callback function that is called when the download is successful.
- * @returns A promise that resolves to the full model path.
- */
-export function downloadModelIfNotExists(
-  options: DownloadOptions
-): Promise<string> {
-  const modelDownloader = new ModelDownloader(options.modelUrl , options.modelFolderName)
-  return modelDownloader.downloadModelIfNotExists(options.onProgress, options.onSuccess)
 }
