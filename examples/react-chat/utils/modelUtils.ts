@@ -2,7 +2,7 @@ import { initLlama, LlamaContext } from "cactus-react-native-2";
 import { Platform } from "react-native";
 import { downloadModelIfNotExists } from "cactus-react-native-2";
 
-const modelUrl = 'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q8_0.gguf';
+const modelUrl = 'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf';
 
 export async function initLlamaContext(progressCallback: (progress: number) => void): Promise<LlamaContext> {
 

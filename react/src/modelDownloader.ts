@@ -53,7 +53,7 @@ export class ModelDownloader {
         }
     }
 
-    async downloadModel(
+    async downloadModelIfNotExists(
         onProgress?: (progress: number) => void,
         onSuccess?: (modelPath: string) => void
     ): Promise<string> {
