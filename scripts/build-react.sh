@@ -9,8 +9,8 @@ export LEFTHOOK=0
 [ -d node_modules ] && rm -rf node_modules
 [ -d lib ] && rm -rf lib 
 
-# Build the Android library
-"$SCRIPT_DIR/build-react-android.sh"
+# # Build the Android library
+# "$SCRIPT_DIR/build-react-android.sh"
 
 # Build the React Native package 
 cd "$ROOT_DIR/react" 
@@ -18,6 +18,7 @@ cd "$ROOT_DIR/react"
 echo "Copying iOS frameworks to React Native project..."
 
 # Copy the iOS framework and project files
+rm -rf ios/cactus.xcframework
 cp -R "$ROOT_DIR/ios"/cactus.xcframework ios/
 cp -R "$ROOT_DIR/ios"/CMakeLists.txt ios/
 

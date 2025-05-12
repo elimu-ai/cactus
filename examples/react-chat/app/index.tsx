@@ -3,9 +3,8 @@ import { KeyboardAvoidingView, Platform, ScrollView, View, Text } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '@/components/Header';
 import { stopWords } from '@/utils/constants';
-import { initLlamaContext } from '@/utils/newModelUtils';
-// import { initLlamaContext } from '@/utils/modelUtils';
-import { LlamaContext } from 'cactus-react-native';
+import { initLlamaContext } from '@/utils/modelUtils';
+import { LlamaContext } from 'cactus-react-native-2';
 import { Message, MessageBubble } from '@/components/Message';
 import { MessageField } from '@/components/MessageField';
 let context: LlamaContext | null = null;

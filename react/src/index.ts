@@ -499,9 +499,9 @@ type DownloadOptions = {
  * @param options.onSuccess - A callback function that is called when the download is successful.
  * @returns A promise that resolves to the full model path.
  */
-export function downloadModelIfNotExists(
+export function downloadModel(
   options: DownloadOptions
 ): Promise<string> {
   const modelDownloader = new ModelDownloader(options.modelUrl , options.modelFolderName)
-  return modelDownloader.downloadModelIfNotExists(options.onProgress, options.onSuccess)
+  return modelDownloader.downloadModel(options.onProgress, options.onSuccess)
 }
