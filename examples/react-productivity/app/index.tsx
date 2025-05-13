@@ -1,14 +1,14 @@
 import { ThemedView } from '@/components/ThemedView';
 import { downloadModelIfNotExists, getFullModelPath, getModelNameFromUrl } from '@/utils/functions';
 import { styles } from '@/utils/styles';
-import { Tools } from '@/utils/tools';
-import { LlamaContext, initLlama } from 'cactus-react-native';
+import { LlamaContext, initLlama, Tools } from 'cactus-react-native';
 import * as FileSystem from 'expo-file-system';
 import { Calendar, Check, LucideIcon, Mail, X } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInLeft, LinearTransition } from 'react-native-reanimated';
 import uuid from 'react-native-uuid';
+import { ActivityIndicator } from 'react-native';
 
 interface RecommendedAction {
   id: string;
@@ -25,6 +25,7 @@ export default function HomeScreen() {
   const [latestCharAnalysed, setLatestCharAnalysed] = useState(0);
   const [recommendedActions, setRecommendedActions] = useState<RecommendedAction[]>([]);
   const [inferenceInProgress, setInferenceInProgress] = useState(false);
+  const tools = new Tools();
   
   const modelUrl = 'https://huggingface.co/Mungert/gemma-3-4b-it-qat-q4_0-GGUF/resolve/main/gemma-3-4b-it-qat-q4_0-q3_k_s.gguf'
 
@@ -47,7 +48,6 @@ export default function HomeScreen() {
     downloadModel().then((result) => {
       setModelDownloaded(result);
     })
-    console.log(JSON.stringify(Tools.getSchemas(), null, 2));
   }, []);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function HomeScreen() {
     }
   }, [modelDownloaded])
 
-  Tools.add(
+  tools.add(
     async function setReminder(date: string, message: string) {
       setRecommendedActions([...recommendedActions, {id: uuid.v4(), title: 'Set a reminder', description: message, icon: Calendar, accepted: false}]);
     },
@@ -75,7 +75,7 @@ export default function HomeScreen() {
     }
   );
 
-  Tools.add(
+  tools.add(
     async function writeDraftEmail(subject: string) {
       setRecommendedActions([...recommendedActions, {id: uuid.v4(), title: 'Write a draft email', description: subject, icon: Mail, accepted: false}]);
     },
@@ -91,53 +91,19 @@ export default function HomeScreen() {
 
   const invokeLLM = async (entry: string) => {
     if(!context) return;
-    setInferenceInProgress(true);
-    console.log('Invoking completion...');
-    const fullPrompt = `You are a personal assistant for a productivity app. The user message represents the note they are typing. You have access to the following functions. Use them if required - 
-    ${JSON.stringify(Tools.getSchemas())}
-    Only use the an available tool if needed. If a tool is chosen, respond ONLY with a JSON object matching the following schema:
-    \`\`\`json
-    {
-      "tool_name": "<name of the tool>",
-      "tool_input": {
-        "<parameter_name>": "<parameter_value>",
-        ...
-      }
-    }
-    \`\`\`
-    Remember, if you are calling a tool, you must respond with the JSON object and the JSON object ONLY!!!
-    If no tool is needed, respond normally.
-    `
+    setInferenceInProgress(true)
 
-    const result = await context.completion({
+    const _ = await context.completionWithTools({
       messages: [
-        {role: 'system', content: fullPrompt},
         {role: 'user', content: entry}
       ],
       temperature: 0.7,
       n_predict: 100,
-      // tools: tools,
+      tools: tools,
       tool_choice: 'auto',
       stop: ['<end_of_turn>']
     });
 
-    // console.log('Result:', result);
-
-    // if (result.content.startsWith('```json')) {
-    const match = result.content.match(/```json\s*([\s\S]*?)\s*```/);
-    if (match) {
-      try {
-        const jsonContent = JSON.parse(match[1]);
-        const { tool_name, tool_input } = jsonContent;
-        console.log('Calling tool:', tool_name, tool_input);
-        const result = await Tools.execute(tool_name, tool_input);
-        console.log('Tool called result:', result);
-      } catch (error) {
-        console.error('Error parsing JSON:', error);
-      }
-    } else {
-      // console.log('No tool called');
-    }
     setInferenceInProgress(false);
   }
 
@@ -149,12 +115,9 @@ export default function HomeScreen() {
 
     const lastChar = text.charAt(text.length - 1);
     if (lastChar === '\n' || lastChar === '.') {
-      // console.log('Trigger LLM!');
       const textToAnalyse = text.substring(latestCharAnalysed);
-      const result = await invokeLLM(textToAnalyse);
-      // console.log('Result:', result);
+      await invokeLLM(textToAnalyse);
       setLatestCharAnalysed(text.length);
-      // Handle the enter key press here
     }
   };
 
@@ -202,6 +165,7 @@ export default function HomeScreen() {
         numColumns={1}
       />
       {/* <Button title="Pop one in" onPress={() => setRecommendedActions([...recommendedActions, {id: uuid.v4(), title: `Write a draft email ${uuid.v4().substring(0, 5)}`, description: 'Hello', icon: Mail, accepted: false}])} /> */}
+      {inferenceInProgress && <ActivityIndicator size="small"/>}
     </ThemedView>
   );
 }
