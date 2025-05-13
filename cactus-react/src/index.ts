@@ -45,7 +45,7 @@ export type {
   SchemaGrammarConverterBuiltinRule,
 }
 
-export { SchemaGrammarConverter, convertJsonSchemaToGrammar }
+export { SchemaGrammarConverter, convertJsonSchemaToGrammar, Tools }
 
 const EVENT_ON_INIT_CONTEXT_PROGRESS = '@Cactus_onInitContextProgress'
 const EVENT_ON_TOKEN = '@Cactus_onToken'
