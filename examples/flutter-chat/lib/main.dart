@@ -62,18 +62,38 @@ class _MyAppState extends State<MyApp> {
       
       setState(() {
         _isLoading = false;
+        _statusMessage = 'Cactus initialized successfully!';
       });
 
+    } on CactusModelPathException catch (e) {
+      if (mounted) {
+        setState(() {
+          _initError = "Model Error: ${e.message}";
+          _statusMessage = 'Failed to load model.';
+          _isLoading = false;
+        });
+      }
+      print("Cactus Model Path Exception: ${e.toString()}");
+    } on CactusInitializationException catch (e) {
+      if (mounted) {
+        setState(() {
+          _initError = "Initialization Error: ${e.message}";
+          _statusMessage = 'Failed to initialize native context.';
+          _isLoading = false;
+        });
+      }
+      print("Cactus Initialization Exception: ${e.toString()}");
     } catch (e) {
       if (mounted) {
         setState(() {
           if (_initError.isEmpty) {
-             _initError = "Failed to initialize Cactus: $e";
+             _initError = "An unexpected error occurred during initialization: ${e.toString()}";
           }
-          _statusMessage = '';
+          _statusMessage = 'Initialization failed.';
           _isLoading = false;
         });
       }
+      print("Generic Exception during Cactus Init: ${e.toString()}");
     } 
   }
 
@@ -91,7 +111,7 @@ class _MyAppState extends State<MyApp> {
 
     if (_cactusContext == null) {
       setState(() {
-        _chatMessages.add(ChatMessage(role: 'system', content: 'Error: CactusContext not initialized.'));
+        _chatMessages.add(ChatMessage(role: 'system', content: 'Error: CactusContext not initialized. Please restart the app.'));
       });
       return;
     }
@@ -107,12 +127,11 @@ class _MyAppState extends State<MyApp> {
     _scrollToBottom();
 
     try {
-      List<ChatMessage> currentChatHistoryForCompletion = [];
-      if (_chatMessages.isNotEmpty) {
-        final end = _chatMessages.last.role == 'assistant' && _chatMessages.last.content.isEmpty 
-                    ? _chatMessages.length - 1 
-                    : _chatMessages.length;
-        currentChatHistoryForCompletion = _chatMessages.sublist(0, end);
+      List<ChatMessage> currentChatHistoryForCompletion = List.from(_chatMessages);
+      if (currentChatHistoryForCompletion.isNotEmpty && 
+          currentChatHistoryForCompletion.last.role == 'assistant' && 
+          currentChatHistoryForCompletion.last.content.isEmpty) {
+        currentChatHistoryForCompletion.removeLast();
       }
       
       final completionParams = CactusCompletionParams(
@@ -122,8 +141,8 @@ class _MyAppState extends State<MyApp> {
         topK: 10,
         topP: 0.9,
         onNewToken: (String token) {
-          if (!_isLoading) {
-            return !(token == '<|im_end|>');
+          if (!mounted || !_isLoading) {
+            return false; 
           }
 
           if (token == '<|im_end|>') {
@@ -138,9 +157,9 @@ class _MyAppState extends State<MyApp> {
                   role: 'assistant', 
                   content: currentAssistantResponse,
                 );
-                _scrollToBottom(); 
-              } 
+              }
             });
+            _scrollToBottom(); 
           }
           return true;
         },
@@ -150,32 +169,50 @@ class _MyAppState extends State<MyApp> {
 
       String finalCleanText = result.text;
       if (finalCleanText.trim().isEmpty && currentAssistantResponse.trim().isNotEmpty) {
-        finalCleanText = currentAssistantResponse; 
+        finalCleanText = currentAssistantResponse.trim();
       } else {
         if (finalCleanText.endsWith('<|im_end|>')) {
-          finalCleanText = finalCleanText.substring(0, finalCleanText.length - '<|im_end|>'.length);
+          finalCleanText = finalCleanText.substring(0, finalCleanText.length - '<|im_end|>'.length).trim();
+        } else {
+          finalCleanText = finalCleanText.trim();
         }
       }
       
-      if (_chatMessages.isNotEmpty && _chatMessages.last.role == 'assistant') {
-         _chatMessages[_chatMessages.length - 1] = ChatMessage(
-          role: 'assistant',
-          content: finalCleanText.trim(),
-        );
-      }
-      setState((){});
-
-    } catch (e) {
       setState(() {
         if (_chatMessages.isNotEmpty && _chatMessages.last.role == 'assistant') {
            _chatMessages[_chatMessages.length - 1] = ChatMessage(
-             role: 'assistant',
-             content: "Error: $e",
-           );
-        } else {
-           _chatMessages.add(ChatMessage(role: 'system', content: "Error during completion: $e"));
+            role: 'assistant',
+            content: finalCleanText.isNotEmpty ? finalCleanText : "(No further response)",
+          );
         }
       });
+
+    } on CactusCompletionException catch (e) {
+      setState(() {
+        String errorMessage = "Completion Error: ${e.message}";
+        if (_chatMessages.isNotEmpty && _chatMessages.last.role == 'assistant') {
+           _chatMessages[_chatMessages.length - 1] = ChatMessage(
+             role: 'assistant',
+             content: errorMessage,
+           );
+        } else {
+           _chatMessages.add(ChatMessage(role: 'system', content: errorMessage));
+        }
+      });
+      print("Cactus Completion Exception: ${e.toString()}");
+    } catch (e) {
+      setState(() {
+        String errorMessage = "An unexpected error occurred during completion: ${e.toString()}";
+        if (_chatMessages.isNotEmpty && _chatMessages.last.role == 'assistant') {
+           _chatMessages[_chatMessages.length - 1] = ChatMessage(
+             role: 'assistant',
+             content: errorMessage,
+           );
+        } else {
+           _chatMessages.add(ChatMessage(role: 'system', content: errorMessage));
+        }
+      });
+      print("Generic Exception during completion: ${e.toString()}");
     } finally {
       setState(() {
         _isLoading = false;

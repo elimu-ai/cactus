@@ -1,6 +1,7 @@
+#include "ggml.h"  
 #include "cactus.h"
-#include "common.h" // For common_sampler_free, common_sampler_init
-
+#include "common.h" 
+#include "mtmd.h"
 namespace cactus {
 
 /**
@@ -11,11 +12,23 @@ namespace cactus {
 cactus_context::~cactus_context() {
     if (ctx_sampling != nullptr) {
         common_sampler_free(ctx_sampling);
-        ctx_sampling = nullptr; // Good practice to nullify after freeing
+        ctx_sampling = nullptr; 
     }
-    // Note: llama_init (which holds model and ctx shared_ptrs) 
-    // will automatically clean up model and ctx when cactus_context is destroyed.
+    if (ctx_mtmd != nullptr) { 
+        mtmd_free(ctx_mtmd);
+        ctx_mtmd = nullptr;
+    }
+
+    if (vocoder_ctx != nullptr) {
+        llama_free(vocoder_ctx);
+        vocoder_ctx = nullptr;
+    }
+    if (vocoder_model != nullptr) {
+        llama_model_free(vocoder_model);
+        vocoder_model = nullptr;
+    }
 }
+
 
 /**
  * @brief Rewinds the context to start a new generation
@@ -24,13 +37,13 @@ cactus_context::~cactus_context() {
  */
 void cactus_context::rewind() {
     is_interrupted = false;
-    is_predicting = false; // Ensure predicting flag is reset too
+    is_predicting = false; 
     params.antiprompt.clear();
     params.sampling.grammar.clear();
     num_prompt_tokens = 0;
     num_tokens_predicted = 0;
     generated_text = "";
-    generated_text.reserve(params.n_ctx); // Reserve based on loaded context size
+    generated_text.reserve(params.n_ctx); 
     generated_token_probs.clear();
     truncated = false;
     stopped_eos = false;
@@ -40,13 +53,12 @@ void cactus_context::rewind() {
     incomplete = false;
     n_remain = 0;
     n_past = 0;
-    embd.clear(); // Clear the embedding vector
+    embd.clear(); 
     if (ctx_sampling) {
-        // Reset sampler state if it exists
-        // common_sampler_reset(ctx_sampling); // Assuming such a function exists or is needed
+        common_sampler_reset(ctx_sampling);
     }
-    // params.sampling.n_prev = n_ctx; // This might be set dynamically or during initSampling
 }
+
 
 /**
  * @brief Initializes the sampling context
@@ -54,20 +66,25 @@ void cactus_context::rewind() {
  * @return true if initialization succeeded, false otherwise
  */
 bool cactus_context::initSampling() {
-    if (ctx_sampling != nullptr) {
-        common_sampler_free(ctx_sampling);
-        ctx_sampling = nullptr;
+    if (this->ctx_sampling != nullptr) {
+        common_sampler_free(this->ctx_sampling);
+        this->ctx_sampling = nullptr;
     }
-    if (model) { // Ensure model is loaded before initializing sampler
-        ctx_sampling = common_sampler_init(model, params.sampling);
-        if (ctx_sampling) {
-             params.sampling.n_prev = n_ctx; // Set n_prev based on context size
-        }
-    } else {
-        LOG_ERROR("Cannot initialize sampling context: model is not loaded.");
+    if (!this->model) { 
+        LOG_ERROR("Cannot initialize sampler: model is not loaded.");
         return false;
     }
-    return ctx_sampling != nullptr;
+
+    this->ctx_sampling = common_sampler_init(this->model, this->params.sampling);
+    
+    if (!this->ctx_sampling) {
+        LOG_ERROR("Failed to initialize common_sampler.");
+        return false;
+    }
+    // If common_sampler_init was successful, often n_prev is set based on context.
+    // This logic might already be in common_sampler_init or needs to be here if it was in original cactus.
+    // params.sampling.n_prev = n_ctx; // Example, check if needed after common_sampler_init
+    return true;
 }
 
 

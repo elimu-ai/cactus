@@ -1,9 +1,10 @@
 # !/bin/bash -e
+# N/B: chat-template.hpp and minja.hpp are diverged
 
 yarn --cwd react
 
 # fetch llama.cpp at a fixed commit instead of using a submodule
-LLAMA_CPP_COMMIT=18b663d8e4ef352a9a15ff15d695fc3258801d60
+LLAMA_CPP_COMMIT=ceda28ef8e310a8dee60bf275077a3eedae8e36c
 LLAMA_CPP_DIR=llama.cpp
 
 # clean up any previous copy
@@ -28,20 +29,31 @@ cp ./llama.cpp/ggml/include/gguf.h ./cactus/gguf.h
 cp ./llama.cpp/ggml/src/ggml-metal/ggml-metal.m ./cactus/ggml-metal.m
 cp ./llama.cpp/ggml/src/ggml-metal/ggml-metal-impl.h ./cactus/ggml-metal-impl.h
 
-cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu.c ./cactus/ggml-cpu.c
-cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu.cpp ./cactus/ggml-cpu.cpp
-cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-impl.h ./cactus/ggml-cpu-impl.h
-cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-aarch64.h ./cactus/ggml-cpu-aarch64.h
-cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-aarch64.cpp ./cactus/ggml-cpu-aarch64.cpp
-cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-quants.h ./cactus/ggml-cpu-quants.h
-cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-quants.c ./cactus/ggml-cpu-quants.c
-cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-traits.h ./cactus/ggml-cpu-traits.h
-cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-traits.cpp ./cactus/ggml-cpu-traits.cpp
+cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu.c ./cactus/ggml-cpu/ggml-cpu.c
+cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu.cpp ./cactus/ggml-cpu/ggml-cpu.cpp
+cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-impl.h ./cactus/ggml-cpu/ggml-cpu-impl.h
+cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-aarch64.h ./cactus/ggml-cpu/ggml-cpu-aarch64.h
+cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-aarch64.cpp ./cactus/ggml-cpu/ggml-cpu-aarch64.cpp
+cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-quants.h ./cactus/ggml-cpu/ggml-cpu-quants.h
+cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-quants.c ./cactus/ggml-cpu/ggml-cpu-quants.c
+cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-traits.h ./cactus/ggml-cpu/ggml-cpu-traits.h
+cp ./llama.cpp/ggml/src/ggml-cpu/ggml-cpu-traits.cpp ./cactus/ggml-cpu/ggml-cpu-traits.cpp
+cp ./llama.cpp/ggml/src/ggml-cpu/common.h ./cactus/ggml-cpu/common.h
 
-cp -r ./llama.cpp/ggml/src/ggml-cpu/amx ./cactus/
+cp ./llama.cpp/ggml/src/ggml-cpu/unary-ops.h ./cactus/ggml-cpu/unary-ops.h
+cp ./llama.cpp/ggml/src/ggml-cpu/unary-ops.cpp ./cactus/ggml-cpu/unary-ops.cpp
+cp ./llama.cpp/ggml/src/ggml-cpu/binary-ops.h ./cactus/ggml-cpu/binary-ops.h
+cp ./llama.cpp/ggml/src/ggml-cpu/binary-ops.cpp ./cactus/ggml-cpu/binary-ops.cpp
+cp ./llama.cpp/ggml/src/ggml-cpu/vec.h ./cactus/ggml-cpu/vec.h
+cp ./llama.cpp/ggml/src/ggml-cpu/vec.cpp ./cactus/ggml-cpu/vec.cpp
+cp ./llama.cpp/ggml/src/ggml-cpu/simd-mappings.h ./cactus/ggml-cpu/simd-mappings.h
+cp ./llama.cpp/ggml/src/ggml-cpu/ops.h ./cactus/ggml-cpu/ops.h
+cp ./llama.cpp/ggml/src/ggml-cpu/ops.cpp ./cactus/ggml-cpu/ops.cpp
 
-cp ./llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.h ./cactus/sgemm.h
-cp ./llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp ./cactus/sgemm.cpp
+cp -r ./llama.cpp/ggml/src/ggml-cpu/amx ./cactus/ggml-cpu/
+
+cp ./llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.h ./cactus/ggml-cpu/sgemm.h
+cp ./llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp ./cactus/ggml-cpu/sgemm.cpp
 
 cp ./llama.cpp/ggml/src/ggml.c ./cactus/ggml.c
 cp ./llama.cpp/ggml/src/ggml-impl.h ./cactus/ggml-impl.h
@@ -118,7 +130,7 @@ cp ./llama.cpp/common/chat.cpp ./cactus/chat.cpp
 cp ./llama.cpp/common/minja/minja.hpp ./cactus/minja/minja.hpp
 cp ./llama.cpp/common/minja/chat-template.hpp ./cactus/minja/chat-template.hpp
 
-List of files to process
+# List of files to process
 files_add_lm_prefix=(
   "./cactus/llama-impl.h"
   "./cactus/llama-impl.cpp"
@@ -161,8 +173,8 @@ files_add_lm_prefix=(
   "./cactus/llama.h"
   "./cactus/llama.cpp"
   "./cactus/sampling.cpp"
-  "./cactus/sgemm.h"
-  "./cactus/sgemm.cpp"
+  "./cactus/ggml-cpu/sgemm.h"
+  "./cactus/ggml-cpu/sgemm.cpp"
   "./cactus/common.h"
   "./cactus/common.cpp"
   "./cactus/json-schema-to-grammar.h"
@@ -187,23 +199,33 @@ files_add_lm_prefix=(
   "./cactus/ggml-backend.cpp"
   "./cactus/ggml-backend-impl.h"
   "./cactus/ggml-backend-reg.cpp"
-  "./cactus/ggml-cpu-impl.h"
   "./cactus/ggml-cpu.h"
-  "./cactus/ggml-cpu.c"
-  "./cactus/ggml-cpu.cpp"
-  "./cactus/ggml-cpu-aarch64.h"
-  "./cactus/ggml-cpu-aarch64.cpp"
-  "./cactus/ggml-cpu-quants.h"
-  "./cactus/ggml-cpu-quants.c"
-  "./cactus/ggml-cpu-traits.h"
-  "./cactus/ggml-cpu-traits.cpp"
+  "./cactus/ggml-cpu/ggml-cpu-impl.h"
+  "./cactus/ggml-cpu/ggml-cpu.c"
+  "./cactus/ggml-cpu/ggml-cpu.cpp"
+  "./cactus/ggml-cpu/ggml-cpu-aarch64.h"
+  "./cactus/ggml-cpu/ggml-cpu-aarch64.cpp"
+  "./cactus/ggml-cpu/ggml-cpu-quants.h"
+  "./cactus/ggml-cpu/ggml-cpu-quants.c"
+  "./cactus/ggml-cpu/ggml-cpu-traits.h"
+  "./cactus/ggml-cpu/ggml-cpu-traits.cpp"
+  "./cactus/ggml-cpu/common.h"
   "./cactus/ggml-threading.h"
   "./cactus/ggml-threading.cpp"
-  "./cactus/amx/amx.h"
-  "./cactus/amx/amx.cpp"
-  "./cactus/amx/mmq.h"
-  "./cactus/amx/mmq.cpp"
-  "./cactus/amx/common.h"
+  "./cactus/ggml-cpu/amx/amx.h"
+  "./cactus/ggml-cpu/amx/amx.cpp"
+  "./cactus/ggml-cpu/amx/mmq.h"
+  "./cactus/ggml-cpu/amx/mmq.cpp"
+  "./cactus/ggml-cpu/amx/common.h"
+  "./cactus/ggml-cpu/unary-ops.h"
+  "./cactus/ggml-cpu/unary-ops.cpp"
+  "./cactus/ggml-cpu/binary-ops.h"
+  "./cactus/ggml-cpu/binary-ops.cpp"
+  "./cactus/ggml-cpu/vec.h"
+  "./cactus/ggml-cpu/vec.cpp"
+  "./cactus/ggml-cpu/simd-mappings.h"
+  "./cactus/ggml-cpu/ops.h"
+  "./cactus/ggml-cpu/ops.cpp"
 )
 
 # Loop through each file and run the sed commands

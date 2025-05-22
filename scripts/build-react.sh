@@ -9,9 +9,6 @@ export LEFTHOOK=0
 [ -d node_modules ] && rm -rf node_modules
 [ -d lib ] && rm -rf lib 
 
-echo "Building Android JNILibs..."
-"$SCRIPT_DIR/build-react-android.sh"
-
 cd "$ROOT_DIR/cactus-react" 
 
 echo "Copying iOS frameworks to React Native project..."

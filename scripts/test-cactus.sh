@@ -1,4 +1,6 @@
 cd cactus-tests
+
+rm -rf build
 mkdir -p build
 cd build
 cmake ..
